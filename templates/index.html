@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Elvanse Tracker</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { background-color: #121212; color: #fff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin: 0; padding: 0; -webkit-font-smoothing:antialiased; }
+        .container { display: flex; height: calc(100vh - 80px); }
+        .left { width: 35%; padding: 14px; overflow-y: auto; }
+        .right { width: 65%; padding: 14px; }
+        /* Mobile-first adjustments */
+        input, button, .dose-row span { font-size: 18px; }
+        .toolbar button { font-size: 18px; padding: 12px 16px; border-radius: 8px; }
+        button.submit { font-size: 18px; padding: 10px 14px; }
+        button.delete { font-size: 16px; padding: 8px 10px; }
+        input { font-size: 18px; padding: 10px; }
+        .dose-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+    .toolbar { padding: 8px 12px; background-color: #1e1e1e; display: flex; overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch; }
+    .toolbar button { margin-right: 8px; padding: 10px 12px; cursor: pointer; border: none; background-color: #333; color: #fff; border-radius: 8px; }
+    .toolbar button.active { background-color: #444; color: #fff; }
+    input { width: 100%; padding: 10px; margin-bottom: 10px; border: none; border-radius: 8px; box-sizing: border-box; }
+    button.submit { padding: 12px 16px; cursor: pointer; border: none; background-color: #2e7d32; color: #fff; border-radius: 8px; width: 100%; }
+    button.delete { padding: 8px 10px; cursor: pointer; border: none; background-color: #c62828; color: #fff; border-radius: 6px; }
+
+    /* Make the graph container scrollable on narrow screens */
+    .graph-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+    #graph { min-width: 100%; height: 60vh; min-height: 320px; }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        {% for day in days %}
+            <a href="{{ url_for('load_day', day_name=day) }}">
+                <button class="{% if day == current_day %}active{% endif %}">{{ day }}</button>
+            </a>
+        {% endfor %}
+        <a href="{{ url_for('new_day') }}">
+            <button style="background-color: #2e7d32;">+ New Day</button>
+        </a>
+    </div>
+
+    <div class="container">
+        <div class="left">
+            <h3>{{ current_day }}</h3>
+            <form action="{{ url_for('add_dose', day=current_day) }}" method="POST">
+                <input type="text" name="time" placeholder="Time HH:MM" required><br>
+                <input type="number" name="dose" placeholder="Dose mg" step="0.1" required><br>
+                <button type="submit" class="submit">Add Dose</button>
+            </form>
+
+            <h4>Doses:</h4>
+            {% for dose, dt in doses %}
+                <div class="dose-row">
+                    <span>{{ dose }} mg at {{ dt.strftime("%H:%M") }}</span>
+                    <form style="display:inline;" action="{{ url_for('delete_dose', day=current_day) }}" method="POST">
+                        <input type="hidden" name="dose" value="{{ dose }}">
+                        <input type="hidden" name="time" value="{{ dt.strftime("%H:%M") }}">
+                        <button type="submit" class="delete">Delete</button>
+                    </form>
+                </div>
+            {% else %}
+                <p>No doses added yet.</p>
+            {% endfor %}
+        </div>
+
+        <div class="right">
+            <div class="graph-wrapper">
+                <div id="graph"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Responsive behavior: stack panels on narrow screens
+        function applyResponsive() {
+            var width = window.innerWidth;
+            var container = document.querySelector('.container');
+            if (width <= 700) {
+                container.style.flexDirection = 'column';
+                document.querySelector('.left').style.width = '100%';
+                document.querySelector('.right').style.width = '100%';
+            } else {
+                container.style.flexDirection = 'row';
+                document.querySelector('.left').style.width = '35%';
+                document.querySelector('.right').style.width = '65%';
+            }
+        }
+        window.addEventListener('resize', applyResponsive);
+        applyResponsive();
+    </script>
+
+    {% if graph_json %}
+    <script>
+        var graphs = {{ graph_json | safe }};
+        console.log('GRAPH JSON (from server):', graphs);
+        try {
+            console.log('x sample:', graphs.data[0].x.slice(0,10));
+            console.log('y sample:', graphs.data[0].y.slice(0,10));
+            console.log('x types (first 10):', graphs.data[0].x.slice(0,10).map(function(v){return typeof v;}));
+        } catch (e) { console.log('DEBUG: cannot inspect graphs data', e); }
+        Plotly.newPlot('graph', graphs.data, graphs.layout, {responsive: true});
+    </script>
+    {% endif %}
+</body>
+</html>

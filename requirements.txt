@@ -1,0 +1,8 @@
+Flask
+pandas
+plotly
+gunicorn
+
+# Note: The project also includes a Kivy app in `lisagraph.py` which is not
+# intended to run on render.com. Kivy has heavy GUI/native dependencies and
+# should be packaged separately if you want to run it on a device.
